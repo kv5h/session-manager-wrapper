@@ -1,2 +1,3 @@
-# sessionmanager-wrapper-rs
-A Rust wrapper for AWS SSM Session manager
+# session-manager-wrapper
+
+A Rust wrapper for AWS SSM Session Manager
