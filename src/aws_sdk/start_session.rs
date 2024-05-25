@@ -186,71 +186,53 @@ pub async fn start_session(prop: &SessionManagerProp) -> Result<(), Box<dyn std:
         },
     };
 
-    println!("{}", session_manager_param.to_string()); // TODO:
-    println!(
-        "{} {} {} StartSession '' {} {}",
-        SESSION_MANAGER_BIN_NAME,
-        resp_json.to_string(),
-        prop.region,
-        session_manager_param.to_string(),
-        format!("https://ssm.{}.amazonaws.com", prop.region)
-    );
+    // println!("{}", session_manager_param.to_string()); // TODO:
+    // println!(
+    //    "{} '{}' '{}' 'StartSession' '' '{}' '{}'",
+    //    SESSION_MANAGER_BIN_NAME,
+    //    resp_json.to_string(),
+    //    prop.region,
+    //    session_manager_param.to_string(),
+    //    format!("https://ssm.{}.amazonaws.com", prop.region)
+    //);
 
-    // Spawning Subprocess
-    tokio::process::Command::new(SESSION_MANAGER_BIN_NAME)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+    //// TODO: OK
+    // let command = [
+    //    SESSION_MANAGER_BIN_NAME,
+    //    &resp_json.to_string(),
+    //    &prop.region,
+    //    "StartSession",
+    //    "",
+    //    &session_manager_param.to_string(),
+    //    &format!("https://ssm.{}.amazonaws.com", prop.region),
+    //];
+    // let mut p = subprocess::Popen::create(&command, subprocess::PopenConfig {
+    //    ..Default::default()
+    //})?;
+    // match p.wait() {
+    //    Ok(o) if o.success() => log::info!("Session ended."),
+    //    _ => log::warn!("Session ended abnormally."),
+    //}
+
+    //// check if the process is still alive
+    // if let Some(_) = p.poll() {
+    //    // the process has finished
+    //} else {
+    //    // it is still running, terminate it
+    //    p.terminate()?;
+    //    log::info!("Session terminated.")
+    //}
+
+    // TODO: OK
+    let exit_status = subprocess::Exec::cmd(SESSION_MANAGER_BIN_NAME)
         .arg(resp_json.to_string())
         .arg(&prop.region)
         .arg("StartSession")
         .arg("")
         .arg(session_manager_param.to_string())
         .arg(format!("https://ssm.{}.amazonaws.com", prop.region))
-        .spawn()?;
-
-    //  subprocess ver.
-    // let command = [
-    // SESSION_MANAGER_BIN_NAME,
-    // &resp_json.to_string(),
-    // &prop.region,
-    // "StartSession",
-    // "",
-    // &session_manager_param.to_string(),
-    // &format!("https://ssm.{}.amazonaws.com", prop.region),
-    // ];
-    // let mut p = subprocess::Popen::create(&command, subprocess::PopenConfig {
-    //     // stdin: subprocess::Redirection::Pipe,
-    //     stdout: subprocess::Redirection::Pipe,
-    //     // stdout: subprocess::Redirection::Merge,
-    //     stdin: subprocess::Redirection::Pipe,
-    //     ..Default::default()
-    // })?;
-    //
-    // let mut p = subprocess::Popen::create(&command, subprocess::PopenConfig::default())?;
-    //
-    // Since we requested stdout to be redirected to a pipe, the parent's
-    // end of the pipe is available as p.stdout.  It can either be read
-    // directly, or processed using the communicate() method:
-    // let (out, err) = p.communicate(None)?;
-    // let _ = p.wait()?;
-    //
-    // check if the process is still alive
-    // if let Some(_) = p.poll() {
-    // the process has finished
-    // } else {
-    // it is still running, terminate it
-    // p.terminate()?;
-    // }
-    //
-    // let exit_status = subprocess::Exec::cmd(SESSION_MANAGER_BIN_NAME)
-    //    .arg(resp_json.to_string())
-    //    .arg(&prop.region)
-    //    .arg("StartSession")
-    //    .arg("")
-    //    .arg(session_manager_param.to_string())
-    //    .arg(format!("https://ssm.{}.amazonaws.com", prop.region))
-    //    .join()?;
-    // assert!(exit_status.success());
+        .join()?;
+    assert!(exit_status.success());
 
     Ok(())
 }
