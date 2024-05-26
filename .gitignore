@@ -14,10 +14,13 @@ Cargo.lock
 *.pdb
 
 # Credentials
-**/env.toml
+**/.env.toml
 
 # Files prefixed with `_`
 **/_*
+
+# Docker
+compose/.docker
 
 # Added by cargo
 /target

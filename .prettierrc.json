@@ -25,7 +25,9 @@
         {
             "files": [
                 "*.markdown",
-                "*.md"
+                "*.md",
+                "*.yaml",
+                "*.yml"
             ],
             "options": {
                 "tabWidth": 2

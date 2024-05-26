@@ -5,6 +5,10 @@
     "dictionaries": [],
     "words": [],
     "ignoreWords": [
+        "awslocal",
+        "direnv",
+        "dynamodbstreams",
+        "localstack",
         "Popen"
     ],
     "import": []

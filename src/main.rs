@@ -43,9 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match start_session(&prop).await {
         Ok(_) => Ok(()),
-        Err(e) => {
-            log::error!("{:?}", e);
-            Err(e)
-        },
+        Err(e) => Err(e),
     }
 }
