@@ -7,14 +7,31 @@ use serde_json::json;
 const SESSION_MANAGER_BIN_NAME: &str = "session-manager-plugin";
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-enum SessionMode {
+pub enum SessionMode {
     Direct,
     PortForwarding,
     PortForwardingToRemoteHost,
 }
 
 impl SessionMode {
-    fn get_document_name(&self) -> Option<String> {
+    /// Get document name corresponding to the session mode
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use session_manager_wrapper::aws_sdk::start_session::SessionMode;
+    ///
+    /// assert_eq!(SessionMode::Direct.get_document_name(), None);
+    /// assert_eq!(
+    ///     SessionMode::PortForwarding.get_document_name(),
+    ///     Some(String::from("AWS-StartPortForwardingSession"))
+    /// );
+    /// assert_eq!(
+    ///     SessionMode::PortForwardingToRemoteHost.get_document_name(),
+    ///     Some(String::from("AWS-StartPortForwardingSessionToRemoteHost"))
+    /// );
+    /// ```
+    pub fn get_document_name(&self) -> Option<String> {
         match self {
             Self::Direct => None,
             Self::PortForwarding => Some(String::from("AWS-StartPortForwardingSession")),
@@ -25,6 +42,7 @@ impl SessionMode {
     }
 }
 
+#[derive(PartialEq)]
 pub struct SessionManagerProp {
     /// AWS Region
     region: String,
@@ -39,6 +57,30 @@ pub struct SessionManagerProp {
 }
 
 impl SessionManagerProp {
+    /// Creates new SessionManagerProp object
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use session_manager_wrapper::aws_sdk::start_session::SessionManagerProp;
+    ///
+    /// let prop = SessionManagerProp::new(
+    ///     "us-east-1".to_string(),
+    ///     "i-1234567890abcdefg".to_string(),
+    ///     Some(1234),
+    ///     Some(12345),
+    ///     Some(url::Host::parse("example.com").unwrap()),
+    /// );
+    ///
+    /// assert_eq!(prop.get_region(), "us-east-1");
+    /// assert_eq!(prop.get_instance_id(), "i-1234567890abcdefg");
+    /// assert_eq!(prop.get_local_port(), &Some(1234));
+    /// assert_eq!(prop.get_remote_port(), &Some(12345));
+    /// assert_eq!(
+    ///     prop.get_remote_host(),
+    ///     &Some(url::Host::parse("example.com").unwrap())
+    /// );
+    /// ```
     pub fn new(
         region: String,
         instance_id: String,
@@ -54,8 +96,117 @@ impl SessionManagerProp {
             remote_host,
         }
     }
+
+    /// Get the region from the property
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use session_manager_wrapper::aws_sdk::start_session::SessionManagerProp;
+    ///
+    /// let prop = SessionManagerProp::new(
+    ///     "us-east-1".to_string(),
+    ///     "i-1234567890abcdefg".to_string(),
+    ///     Some(1234),
+    ///     Some(12345),
+    ///     Some(url::Host::parse("example.com").unwrap()),
+    /// );
+    ///
+    /// assert_eq!(prop.get_region(), "us-east-1")
+    /// ```
+    pub fn get_region(&self) -> &str {
+        &self.region
+    }
+
+    /// Get the instance ID from the property
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use session_manager_wrapper::aws_sdk::start_session::SessionManagerProp;
+    ///
+    /// let prop = SessionManagerProp::new(
+    ///     "us-east-1".to_string(),
+    ///     "i-1234567890abcdefg".to_string(),
+    ///     Some(1234),
+    ///     Some(12345),
+    ///     Some(url::Host::parse("example.com").unwrap()),
+    /// );
+    ///
+    /// assert_eq!(prop.get_instance_id(), "i-1234567890abcdefg")
+    /// ```
+    pub fn get_instance_id(&self) -> &str {
+        &self.instance_id
+    }
+
+    /// Get the local port from the property
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use session_manager_wrapper::aws_sdk::start_session::SessionManagerProp;
+    ///
+    /// let prop = SessionManagerProp::new(
+    ///     "us-east-1".to_string(),
+    ///     "i-1234567890abcdefg".to_string(),
+    ///     Some(1234),
+    ///     Some(12345),
+    ///     Some(url::Host::parse("example.com").unwrap()),
+    /// );
+    ///
+    /// assert_eq!(prop.get_local_port(), &Some(1234))
+    /// ```
+    pub fn get_local_port(&self) -> &Option<u16> {
+        &self.local_port
+    }
+
+    /// Get the remote port from the property
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use session_manager_wrapper::aws_sdk::start_session::SessionManagerProp;
+    ///
+    /// let prop = SessionManagerProp::new(
+    ///     "us-east-1".to_string(),
+    ///     "i-1234567890abcdefg".to_string(),
+    ///     Some(1234),
+    ///     Some(12345),
+    ///     Some(url::Host::parse("example.com").unwrap()),
+    /// );
+    ///
+    /// assert_eq!(prop.get_remote_port(), &Some(12345))
+    /// ```
+    pub fn get_remote_port(&self) -> &Option<u16> {
+        &self.remote_port
+    }
+
+    /// Get the remote host from the property
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use session_manager_wrapper::aws_sdk::start_session::SessionManagerProp;
+    ///
+    /// let prop = SessionManagerProp::new(
+    ///     "us-east-1".to_string(),
+    ///     "i-1234567890abcdefg".to_string(),
+    ///     Some(1234),
+    ///     Some(12345),
+    ///     Some(url::Host::parse("example.com").unwrap()),
+    /// );
+    ///
+    /// assert_eq!(
+    ///     prop.get_remote_host(),
+    ///     &Some(url::Host::parse("example.com").unwrap())
+    /// )
+    /// ```
+    pub fn get_remote_host(&self) -> &Option<url::Host> {
+        &self.remote_host
+    }
 }
 
+/// Get the SSM client
 async fn get_client(region: &str) -> aws_sdk_ssm::Client {
     let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
         .region(aws_types::region::Region::new(region.to_owned()))
@@ -65,6 +216,7 @@ async fn get_client(region: &str) -> aws_sdk_ssm::Client {
     aws_sdk_ssm::Client::new(&config)
 }
 
+/// Check whether the binary exist on the host
 fn check_binary_exist() {
     match subprocess::Exec::cmd(SESSION_MANAGER_BIN_NAME).join() {
         Ok(o) => {
@@ -84,15 +236,44 @@ fn check_binary_exist() {
 /// Get session mode
 ///
 /// Cause panic if the combination is invalid.
-fn get_mode(prop: &SessionManagerProp) -> SessionMode {
+///
+/// ## Examples
+///
+/// ```rust
+/// use session_manager_wrapper::aws_sdk::start_session::{
+///     get_mode,
+///     SessionManagerProp,
+///     SessionMode,
+/// };
+///
+/// let prop = SessionManagerProp::new(
+///     "us-east-1".to_string(),
+///     "i-1234567890abcdefg".to_string(),
+///     Some(1234),
+///     Some(12345),
+///     Some(url::Host::parse("example.com").unwrap()),
+/// );
+///
+/// assert_eq!(get_mode(&prop), SessionMode::PortForwardingToRemoteHost)
+/// ```
+pub fn get_mode(prop: &SessionManagerProp) -> SessionMode {
     match prop {
-        p if p.local_port.is_none() && p.remote_port.is_none() && p.remote_host.is_none() => {
+        p if p.get_local_port().is_none()
+            && p.get_remote_port().is_none()
+            && p.get_remote_host().is_none() =>
+        {
             SessionMode::Direct
         },
-        p if p.local_port.is_some() && p.remote_port.is_some() && p.remote_host.is_none() => {
+        p if p.get_local_port().is_some()
+            && p.get_remote_port().is_some()
+            && p.get_remote_host().is_none() =>
+        {
             SessionMode::PortForwarding
         },
-        p if p.local_port.is_some() && p.remote_port.is_some() && p.remote_host.is_some() => {
+        p if p.get_local_port().is_some()
+            && p.get_remote_port().is_some()
+            && p.get_remote_host().is_some() =>
+        {
             SessionMode::PortForwardingToRemoteHost
         },
         _ => {
@@ -129,35 +310,35 @@ pub async fn start_session(prop: &SessionManagerProp) -> Result<(), Box<dyn std:
         SessionMode::Direct => (),
         SessionMode::PortForwarding => {
             parameters.insert("portNumber".to_string(), vec![prop
-                .remote_port
+                .get_remote_port()
                 .unwrap()
                 .to_string()]);
             parameters.insert("localPortNumber".to_string(), vec![prop
-                .local_port
+                .get_local_port()
                 .unwrap()
                 .to_string()]);
         },
         SessionMode::PortForwardingToRemoteHost => {
             parameters.insert("host".to_string(), vec![prop
-                .remote_host
+                .get_remote_host()
                 .clone()
                 .unwrap()
                 .to_string()]);
             parameters.insert("portNumber".to_string(), vec![prop
-                .remote_port
+                .get_remote_port()
                 .unwrap()
                 .to_string()]);
             parameters.insert("localPortNumber".to_string(), vec![prop
-                .local_port
+                .get_local_port()
                 .unwrap()
                 .to_string()]);
         },
     };
 
-    let resp = get_client(&prop.region)
+    let resp = get_client(prop.get_region())
         .await
         .start_session()
-        .target(&prop.instance_id)
+        .target(prop.get_instance_id())
         .set_document_name(document_name)
         .set_parameters(if parameters.is_empty() {
             None
@@ -184,22 +365,22 @@ pub async fn start_session(prop: &SessionManagerProp) -> Result<(), Box<dyn std:
     }
 
     let session_manager_param = match mode {
-        SessionMode::Direct => json!({"Target" : &prop.instance_id}),
+        SessionMode::Direct => json!({"Target" : prop.get_instance_id()}),
         SessionMode::PortForwarding => json!({
-            "Target" : &prop.instance_id,
+            "Target" : prop.get_instance_id(),
             "DocumentName": SessionMode::PortForwarding.get_document_name(),
             "parameters": {
-                "portNumber": vec![prop.remote_port.unwrap().to_string()],
-                "localPortNumber": vec![prop.local_port.unwrap().to_string()]
+                "portNumber": vec![prop.get_remote_port().unwrap().to_string()],
+                "localPortNumber": vec![prop.get_local_port().unwrap().to_string()]
             }
         }),
         SessionMode::PortForwardingToRemoteHost => json!({
-            "Target" : &prop.instance_id,
+            "Target" : prop.get_instance_id(),
             "DocumentName": SessionMode::PortForwardingToRemoteHost.get_document_name(),
             "parameters": {
-                "host": vec![prop.remote_host.clone().unwrap().to_string()],
-                "portNumber": vec![prop.remote_port.unwrap().to_string()],
-                "localPortNumber": vec![prop.local_port.unwrap().to_string()]
+                "host": vec![prop.get_remote_host().clone().unwrap().to_string()],
+                "portNumber": vec![prop.get_remote_port().unwrap().to_string()],
+                "localPortNumber": vec![prop.get_local_port().unwrap().to_string()]
             }
         }),
     };
@@ -210,11 +391,11 @@ pub async fn start_session(prop: &SessionManagerProp) -> Result<(), Box<dyn std:
     });
     let exit_status = subprocess::Exec::cmd(SESSION_MANAGER_BIN_NAME)
         .arg(resp_json.to_string())
-        .arg(&prop.region)
+        .arg(prop.get_region())
         .arg("StartSession")
         .arg("")
         .arg(session_manager_param.to_string())
-        .arg(format!("https://ssm.{}.amazonaws.com", prop.region))
+        .arg(format!("https://ssm.{}.amazonaws.com", prop.get_region()))
         .join()?;
     assert!(exit_status.success());
 
@@ -249,8 +430,8 @@ mod tests {
         let oks: Vec<(SessionManagerProp, SessionMode)> = vec![
             (
                 SessionManagerProp::new(
-                    "region".to_string(),
-                    "instance_id".to_string(),
+                    "us-east-1".to_string(),
+                    "i-1234567890abcdefg".to_string(),
                     None,
                     None,
                     None,
@@ -259,8 +440,8 @@ mod tests {
             ),
             (
                 SessionManagerProp::new(
-                    "region".to_string(),
-                    "instance_id".to_string(),
+                    "us-east-1".to_string(),
+                    "i-1234567890abcdefg".to_string(),
                     Some(12345),
                     Some(12345),
                     None,
@@ -269,8 +450,8 @@ mod tests {
             ),
             (
                 SessionManagerProp::new(
-                    "region".to_string(),
-                    "instance_id".to_string(),
+                    "us-east-1".to_string(),
+                    "i-1234567890abcdefg".to_string(),
                     Some(12345),
                     Some(12345),
                     Some(url::Host::parse("example.com").unwrap()),
@@ -283,36 +464,36 @@ mod tests {
 
         let ngs: Vec<SessionManagerProp> = vec![
             SessionManagerProp::new(
-                "region".to_string(),
-                "instance_id".to_string(),
+                "us-east-1".to_string(),
+                "i-1234567890abcdefg".to_string(),
                 Some(12345),
                 None,
                 None,
             ),
             SessionManagerProp::new(
-                "region".to_string(),
-                "instance_id".to_string(),
+                "us-east-1".to_string(),
+                "i-1234567890abcdefg".to_string(),
                 None,
                 Some(12345),
                 None,
             ),
             SessionManagerProp::new(
-                "region".to_string(),
-                "instance_id".to_string(),
+                "us-east-1".to_string(),
+                "i-1234567890abcdefg".to_string(),
                 None,
                 None,
                 Some(url::Host::parse("example.com").unwrap()),
             ),
             SessionManagerProp::new(
-                "region".to_string(),
-                "instance_id".to_string(),
+                "us-east-1".to_string(),
+                "i-1234567890abcdefg".to_string(),
                 Some(12345),
                 None,
                 Some(url::Host::parse("example.com").unwrap()),
             ),
             SessionManagerProp::new(
-                "region".to_string(),
-                "instance_id".to_string(),
+                "us-east-1".to_string(),
+                "i-1234567890abcdefg".to_string(),
                 None,
                 Some(12345),
                 Some(url::Host::parse("example.com").unwrap()),
