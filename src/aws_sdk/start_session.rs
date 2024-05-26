@@ -56,13 +56,13 @@ impl SessionManagerProp {
     }
 }
 
-async fn get_client(region: &str) -> Result<aws_sdk_ssm::Client, ()> {
+async fn get_client(region: &str) -> aws_sdk_ssm::Client {
     let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
         .region(aws_types::region::Region::new(region.to_owned()))
         .load()
         .await;
 
-    Ok(aws_sdk_ssm::Client::new(&config))
+    aws_sdk_ssm::Client::new(&config)
 }
 
 fn check_binary_exist() {
@@ -156,7 +156,6 @@ pub async fn start_session(prop: &SessionManagerProp) -> Result<(), Box<dyn std:
 
     let resp = get_client(&prop.region)
         .await
-        .unwrap()
         .start_session()
         .target(&prop.instance_id)
         .set_document_name(document_name)
@@ -232,13 +231,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_get_client() {
-        let region =
-            std::env::var("AWS_REGION").expect("Environment variable `AWS_REGION` not found.");
-        assert!(get_client(&region).await.is_ok());
-    }
-
-    #[tokio::test]
+    #[ignore = "Requires target instance. This operation is not available at Localstack."]
     async fn test_start_session() {
         env_logger::init();
         let region =
