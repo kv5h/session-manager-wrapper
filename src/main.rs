@@ -42,9 +42,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let prop = SessionManagerProp::new(region, instance_id, local_port, remote_port, remote_host);
 
     match start_session(&prop).await {
-        Ok(_) => (),
-        Err(e) => log::error!("{e}"),
+        Ok(_) => Ok(()),
+        Err(e) => {
+            log::error!("{:?}", e);
+            Err(e)
+        },
     }
-
-    Ok(())
 }

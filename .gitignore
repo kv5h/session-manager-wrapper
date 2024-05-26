@@ -14,7 +14,10 @@ Cargo.lock
 *.pdb
 
 # Credentials
-env.toml
+**/env.toml
+
+# Files prefixed with `_`
+**/_*
 
 # Added by cargo
 /target

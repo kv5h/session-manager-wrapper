@@ -1,29 +1,24 @@
-use std::{io, ops::Deref, process::Stdio};
+use std::collections::HashMap;
 
-use aws_config::BehaviorVersion;
-use aws_types::region::Region;
 use serde_json::json;
-use tokio::process::Command;
 
 const SESSION_MANAGER_BIN_NAME: &str = "session-manager-plugin";
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-enum DocumentName {
-    AwsStartPortForwardingSession,
-    AwsStartPortForwardingSessionToRemoteHost,
-    None,
+enum SessionMode {
+    Direct,
+    PortForwarding,
+    PortForwardingToRemoteHost,
 }
 
-impl DocumentName {
+impl SessionMode {
     fn get_document_name(&self) -> Option<String> {
         match self {
-            Self::AwsStartPortForwardingSession => {
-                Some(String::from("AWS-StartPortForwardingSession"))
-            },
-            Self::AwsStartPortForwardingSessionToRemoteHost => {
+            Self::Direct => None,
+            Self::PortForwarding => Some(String::from("AWS-StartPortForwardingSession")),
+            Self::PortForwardingToRemoteHost => {
                 Some(String::from("AWS-StartPortForwardingSessionToRemoteHost"))
             },
-            Self::None => None,
         }
     }
 }
@@ -60,8 +55,8 @@ impl SessionManagerProp {
 }
 
 async fn get_client(region: &str) -> aws_sdk_ssm::Client {
-    let config = aws_config::defaults(BehaviorVersion::latest())
-        .region(Region::new(region.to_owned()))
+    let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+        .region(aws_types::region::Region::new(region.to_owned()))
         .load()
         .await;
 
@@ -90,140 +85,107 @@ pub async fn start_session(prop: &SessionManagerProp) -> Result<(), Box<dyn std:
     check_binary_exist();
 
     let mode = if prop.remote_host.is_some() {
-        DocumentName::AwsStartPortForwardingSessionToRemoteHost
+        SessionMode::PortForwardingToRemoteHost
     } else if prop.local_port.is_some() && prop.remote_port.is_some() {
-        DocumentName::AwsStartPortForwardingSession
+        SessionMode::PortForwarding
     } else {
-        DocumentName::None
+        SessionMode::Direct
     };
 
-    log::info!("Document name: {:?}", mode);
+    log::info!("Document name: {}", match mode.get_document_name() {
+        Some(val) => val,
+        None => "None".to_string(),
+    });
 
-    let resp = match mode {
-        m if m == DocumentName::AwsStartPortForwardingSessionToRemoteHost => {
-            get_client(&prop.region)
-                .await
-                .start_session()
-                .target(&prop.instance_id)
-                .document_name(m.get_document_name().unwrap())
-                .parameters("host", vec![prop.remote_host.clone().unwrap().to_string()]) // TODO:
-                .parameters("portNumber", vec![prop.remote_port.unwrap().to_string()])
-                .parameters("localPortNumber", vec![prop
-                    .local_port
-                    .unwrap()
-                    .to_string()])
-                .send()
-                .await
+    let document_name = match mode {
+        SessionMode::Direct => SessionMode::Direct.get_document_name(),
+        SessionMode::PortForwardingToRemoteHost => {
+            SessionMode::PortForwardingToRemoteHost.get_document_name()
         },
-        m if m == DocumentName::AwsStartPortForwardingSession => {
-            get_client(&prop.region)
-                .await
-                .start_session()
-                .target(&prop.instance_id)
-                .document_name(m.get_document_name().unwrap())
-                .parameters("portNumber", vec![prop.remote_port.unwrap().to_string()])
-                .parameters("localPortNumber", vec![prop
-                    .local_port
-                    .unwrap()
-                    .to_string()])
-                .send()
-                .await
+        SessionMode::PortForwarding => SessionMode::PortForwarding.get_document_name(),
+    };
+
+    let mut parameters = HashMap::new();
+    match mode {
+        SessionMode::Direct => (),
+        SessionMode::PortForwarding => {
+            parameters.insert("portNumber".to_string(), vec![prop
+                .remote_port
+                .unwrap()
+                .to_string()]);
+            parameters.insert("localPortNumber".to_string(), vec![prop
+                .local_port
+                .unwrap()
+                .to_string()]);
         },
-        _ => {
-            get_client(&prop.region)
-                .await
-                .start_session()
-                .target(&prop.instance_id)
-                .send()
-                .await
+        SessionMode::PortForwardingToRemoteHost => {
+            parameters.insert("host".to_string(), vec![prop
+                .remote_host
+                .clone()
+                .unwrap()
+                .to_string()]);
+            parameters.insert("portNumber".to_string(), vec![prop
+                .remote_port
+                .unwrap()
+                .to_string()]);
+            parameters.insert("localPortNumber".to_string(), vec![prop
+                .local_port
+                .unwrap()
+                .to_string()]);
         },
     };
+
+    let resp = get_client(&prop.region)
+        .await
+        .start_session()
+        .target(&prop.instance_id)
+        .set_document_name(document_name)
+        .set_parameters(if parameters.is_empty() {
+            None
+        } else {
+            Some(parameters)
+        })
+        .send()
+        .await;
 
     let resp_json: serde_json::Value;
     match resp {
         Ok(o) => {
             log::info!("Session ID: {}", o.session_id().unwrap());
             resp_json = json!({
-                // TODO: NG
-                //"session_id": o.session_id().unwrap(),
-                //"token_value": o.token_value().unwrap(),
-                //"stream_url": o.token_value().unwrap(),
                 "SessionId": o.session_id().unwrap(),
                 "TokenValue": o.token_value().unwrap(),
                 "StreamUrl": o.stream_url().unwrap(),
             });
         },
-        Err(e) => {
-            log::error!("{e}");
-            return Err(e.into());
-        },
+        Err(e) => return Err(e.into()),
     }
 
     let session_manager_param = match mode {
-        m if m == DocumentName::AwsStartPortForwardingSessionToRemoteHost => {
-            json!({
-                "Target" : &prop.instance_id,
-                "DocumentName": m.get_document_name().unwrap(),
-                "parameters": {
-                    "host": vec![prop.remote_host.clone().unwrap().to_string()],
-                    "portNumber": vec![prop.remote_port.unwrap().to_string()],
-                    "localPortNumber": vec![prop.local_port.unwrap().to_string()]
-                }
-            })
-        },
-        m if m == DocumentName::AwsStartPortForwardingSession => {
-            json!({
-                "Target" : &prop.instance_id,
-                "DocumentName": m.get_document_name().unwrap(),
-                "parameters": {
-                    "portNumber": vec![prop.remote_port.unwrap().to_string()],
-                    "localPortNumber": vec![prop.local_port.unwrap().to_string()]
-                }
-            })
-        },
-        _ => {
-            json!({"Target" : &prop.instance_id})
-        },
+        SessionMode::Direct => json!({"Target" : &prop.instance_id}),
+        SessionMode::PortForwarding => json!({
+            "Target" : &prop.instance_id,
+            "DocumentName": SessionMode::PortForwarding.get_document_name(),
+            "parameters": {
+                "portNumber": vec![prop.remote_port.unwrap().to_string()],
+                "localPortNumber": vec![prop.local_port.unwrap().to_string()]
+            }
+        }),
+        SessionMode::PortForwardingToRemoteHost => json!({
+            "Target" : &prop.instance_id,
+            "DocumentName": SessionMode::PortForwardingToRemoteHost.get_document_name(),
+            "parameters": {
+                "host": vec![prop.remote_host.clone().unwrap().to_string()],
+                "portNumber": vec![prop.remote_port.unwrap().to_string()],
+                "localPortNumber": vec![prop.local_port.unwrap().to_string()]
+            }
+        }),
     };
 
-    // println!("{}", session_manager_param.to_string()); // TODO:
-    // println!(
-    //    "{} '{}' '{}' 'StartSession' '' '{}' '{}'",
-    //    SESSION_MANAGER_BIN_NAME,
-    //    resp_json.to_string(),
-    //    prop.region,
-    //    session_manager_param.to_string(),
-    //    format!("https://ssm.{}.amazonaws.com", prop.region)
-    //);
-
-    //// TODO: OK
-    // let command = [
-    //    SESSION_MANAGER_BIN_NAME,
-    //    &resp_json.to_string(),
-    //    &prop.region,
-    //    "StartSession",
-    //    "",
-    //    &session_manager_param.to_string(),
-    //    &format!("https://ssm.{}.amazonaws.com", prop.region),
-    //];
-    // let mut p = subprocess::Popen::create(&command, subprocess::PopenConfig {
-    //    ..Default::default()
-    //})?;
-    // match p.wait() {
-    //    Ok(o) if o.success() => log::info!("Session ended."),
-    //    _ => log::warn!("Session ended abnormally."),
-    //}
-
-    //// check if the process is still alive
-    // if let Some(_) = p.poll() {
-    //    // the process has finished
-    //} else {
-    //    // it is still running, terminate it
-    //    p.terminate()?;
-    //    log::info!("Session terminated.")
-    //}
-
-    // TODO: OK
+    tokio::spawn(async move {
+        // Listen in the background
+        tokio::signal::ctrl_c().await.unwrap();
+    });
     let exit_status = subprocess::Exec::cmd(SESSION_MANAGER_BIN_NAME)
         .arg(resp_json.to_string())
         .arg(&prop.region)
