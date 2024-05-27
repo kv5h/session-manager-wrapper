@@ -13,14 +13,12 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
-# Credentials
-**/.env.toml
-
 # Files prefixed with `_`
 **/_*
 
-# Docker
-compose/.docker
+# Env files
+.env*
+**/.env*
 
 # Added by cargo
 /target
