@@ -1,0 +1,46 @@
+name: Cargo Build & Test
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - '**/*.rs'
+            - .github/workflows/cargo_ci.yaml
+    pull_request:
+        types:
+            - opened
+            - reopened
+            - synchronize
+        paths:
+            - '**/*.rs'
+            - .github/workflows/cargo_ci.yaml
+    workflow_dispatch:
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    build_and_test:
+        name: Rust project - latest
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                toolchain:
+                    # - stable
+                    # - beta
+                    - nightly
+        steps:
+            - uses: actions/checkout@v4
+            - name: rustup update
+              run:
+                  rustup update ${{ matrix.toolchain }} && rustup default ${{
+                  matrix.toolchain }}
+            - name: rustfmt
+              run:
+                  rustup component add rustfmt && find ./ -name *.rs | xargs
+                  -I{} rustfmt --edition 2021 --check {}
+            - name: cargo build
+              run: cargo build
+            - name: cargo test
+              run: cargo test
