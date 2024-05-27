@@ -1,89 +1,22 @@
+[![cargo_ci](https://github.com/kv5h/session-manager-wrapper/actions/workflows/cargo_ci.yaml/badge.svg)](https://github.com/kv5h/session-manager-wrapper/blob/main/.github/workflows/cargo_ci.yaml)
+![rust_version](https://img.shields.io/badge/Rust_version-rustc_1.80.0--nightly-red)
+
 # session-manager-wrapper
 
 A Rust wrapper for AWS SSM Session Manager
 
-## Testing
+## Usage
 
-> [!WARNING]
->
-> Under maintenance
-
-### Install LocalStack
-
-```bash
-pip3 install localstack
 ```
+Usage: session-manager-wrapper [OPTIONS] --instance-id <instance id>
 
-```bash
-brew install localstack/tap/localstack-cli
-```
-
-#### (Option) List available services
-
-```bash
-localstack start -d
-```
-
-```bash
-localstack status services
-```
-
-Output sample:
-
-```plaintext
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
-┃ Service                  ┃ Status      ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
-│ acm                      │ ✔ available │
-│ apigateway               │ ✔ available │
-│ cloudformation           │ ✔ available │
-│ cloudwatch               │ ✔ available │
-│ config                   │ ✔ available │
-│ dynamodb                 │ ✔ available │
-│ dynamodbstreams          │ ✔ available │
-│ ec2                      │ ✔ available │
-│ es                       │ ✔ available │
-│ events                   │ ✔ available │
-...
-```
-
-### Export environment variables
-
-```bash
-direnv allow
-```
-
-```bash
-cp .env.example.toml .env.toml
-```
-
-### Setting up testing environment
-
-**NOTE**: Run this after exporting the environment variables.
-
-```bash
-bash ./script/init_test_env.sh
-```
-
-```bash
-export TEST_INSTANCE_ID=$(awslocal ec2 describe-instances \
-  --filters "Name=image-id,Values=6db4dfa5-ea15-44d1-918b-cb39b7b6e1ca" \
-  | jq -r .Reservations[0].Instances[0].InstanceId)
-```
-
-### Run test
-
-```bash
-cargo test
-```
-
-```bash
-# With stdout
-cargo test -- --nocapture
-```
-
-### Clean up
-
-```bash
-docker compose -f compose/compose.yaml down && unset TEST_INSTANCE_ID
+Options:
+  -i, --instance-id <instance id>  Instance ID
+  -l, --local-port <local port>    Local port
+                                   If `0` is specified, an arbitrary free port will be assigned.
+  -p, --remote-port <remote port>  Remote port
+  -r, --remote-host <remote host>  Remote host
+                                   Required only for port forwarding over bastion server
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
