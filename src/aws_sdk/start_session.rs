@@ -285,8 +285,7 @@ pub fn get_mode(prop: &SessionManagerProp) -> SessionMode {
 
 /// Pick a free port
 ///
-/// - If the specified number is `0`, returns an arbitrary free port.
-/// - Cause panic if specified port is not free or no free port found.
+/// If the specified number is `0`, returns an arbitrary free port.
 ///
 /// ## Examples
 ///
