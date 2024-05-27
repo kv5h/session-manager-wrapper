@@ -1,24 +1,15 @@
-use clap::{crate_description, crate_name, crate_version, Arg, ArgAction, Command};
+use clap::{crate_description, crate_name, crate_version, Arg, Command};
 
 pub fn new_clap_command() -> clap::ArgMatches {
     Command::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
         .arg(
-            Arg::new("interactive")
-                .short('I')
-                .conflicts_with_all(["instance_id", "local_port", "remote_port", "remote_host"])
-                .long("interactive")
-                .action(ArgAction::SetTrue)
-                .help("Use interactive mode\nConflicts with any other flag"),
-        )
-        .arg(
             Arg::new("instance_id")
                 .short('i')
                 .long("instance-id")
                 .require_equals(false)
-                .required(false)
-                .required_unless_present("interactive")
+                .required(true)
                 .value_name("instance id")
                 .help("Instance ID"),
         )
@@ -30,7 +21,7 @@ pub fn new_clap_command() -> clap::ArgMatches {
                 .required(false)
                 .value_name("local port")
                 .value_parser(clap::value_parser!(u16).range(0..=65535))
-                .help("Local port"),
+                .help("Local port\nIf `0` is specified, an arbitrary free port will be assigned."),
         )
         .arg(
             Arg::new("remote_port")
@@ -53,5 +44,3 @@ pub fn new_clap_command() -> clap::ArgMatches {
         )
         .get_matches()
 }
-
-// TODO: Add test
