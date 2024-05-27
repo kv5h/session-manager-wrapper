@@ -9,6 +9,7 @@
         "direnv",
         "dynamodbstreams",
         "localstack",
+        "portpicker",
         "Popen"
     ],
     "import": []
