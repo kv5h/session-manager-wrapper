@@ -7,13 +7,6 @@ mod util;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Clap: Read command-line options
     let clap = util::clap::new_clap_command();
-    let interactive = clap.get_flag("interactive");
-
-    if interactive {
-        // TODO:
-        return Ok(());
-    }
-
     let instance_id = clap
         .get_one::<String>("instance_id")
         .expect("`instance_id` required.")
@@ -39,9 +32,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     builder.filter_level(log::LevelFilter::Info);
     builder.init();
 
-    let prop = SessionManagerProp::new(region, instance_id, local_port, remote_port, remote_host);
+    let mut prop =
+        SessionManagerProp::new(region, instance_id, local_port, remote_port, remote_host);
 
-    match start_session(&prop).await {
+    match start_session(&mut prop).await {
         Ok(_) => Ok(()),
         Err(e) => Err(e),
     }

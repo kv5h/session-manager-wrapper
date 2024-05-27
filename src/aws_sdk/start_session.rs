@@ -283,14 +283,58 @@ pub fn get_mode(prop: &SessionManagerProp) -> SessionMode {
     }
 }
 
+/// Pick a free port
+///
+/// - If the specified number is `0`, returns an arbitrary free port.
+/// - Cause panic if specified port is not free or no free port found.
+///
+/// ## Examples
+///
+/// ```rust
+/// use session_manager_wrapper::aws_sdk::start_session::pick_port;
+///
+/// let free_port = pick_port(&0);
+/// assert!(pick_port(&free_port.unwrap()).is_some());
+///
+/// assert!(pick_port(&1000).is_none())
+/// ```
+pub fn pick_port(port: &u16) -> Option<u16> {
+    if port == &0 {
+        match portpicker::pick_unused_port() {
+            Some(val) => Some(val),
+            None => {
+                log::error!("No free port found.");
+                None
+            },
+        }
+    } else {
+        if !portpicker::is_free(port.to_owned()) {
+            // If specified port is not free
+            log::error!("Specified port {} is not free.", port);
+            return None;
+        }
+        Some(port.to_owned())
+    }
+}
+
+/// Execute `start-session` operation of AWS SSM Session manager
+///
 /// ## Reference
 ///
 /// https://github.com/aws/session-manager-plugin/blob/mainline/src/sessionmanagerplugin/session/session.go
-pub async fn start_session(prop: &SessionManagerProp) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_session(
+    prop: &mut SessionManagerProp,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Assert executable exist
     check_binary_exist();
 
     let mode = get_mode(prop);
+    if mode == SessionMode::PortForwarding || mode == SessionMode::PortForwardingToRemoteHost {
+        prop.local_port = match pick_port(&prop.get_local_port().unwrap()) {
+            Some(val) => Some(val),
+            None => panic!(),
+        }
+    }
 
     log::info!("Document name: {}", match mode.get_document_name() {
         Some(val) => val,
@@ -402,8 +446,6 @@ pub async fn start_session(prop: &SessionManagerProp) -> Result<(), Box<dyn std:
     Ok(())
 }
 
-// TODO: Add test
-
 #[cfg(test)]
 mod tests {
 
@@ -420,9 +462,9 @@ mod tests {
         let instance_id = std::env::var("TEST_INSTANCE_ID")
             .expect("Environment variable `TEST_INSTANCE_ID` not found.");
         let (local_port, remote_port, remote_host) = (None, None, None);
-        let prop =
+        let mut prop =
             SessionManagerProp::new(region, instance_id, local_port, remote_port, remote_host);
-        assert!(start_session(&prop).await.is_ok())
+        assert!(start_session(&mut prop).await.is_ok())
     }
 
     #[test]
