@@ -20,3 +20,12 @@ Options:
   -h, --help                       Print help
   -V, --version                    Print version
 ```
+
+> [!TIP]
+>
+> To start a session with an Amazon ECS task, use
+> `ecs:<ECS_cluster_name>_<ECS_container_ID>_<container_runtime_ID>` as
+> `<instance id>`.
+>
+> Reference:
+> [Starting a session with an Amazon ECS task](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html#sessions-remote-port-forwarding)
